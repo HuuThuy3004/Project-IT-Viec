@@ -150,36 +150,40 @@ export class AuthService {
     };
   }
 
-  async loginGoogle(body: LoginGoogleDto) {
-    const { token } = body;
-    const ggClientId = this.configService.get('google').clientId;
-    const ggClientSecret = this.configService.get('google').clientSecret;
-    const oAuthClient = new OAuth2Client(ggClientId, ggClientSecret);
-    const ggLoginTicket = await oAuthClient.verifyIdToken({
+  async loginGoogle(loginGoogleDto: LoginGoogleDto) {
+    const { token } = loginGoogleDto;
+
+    const googleClientId = this.configService.get('google').clientId;
+    const googleClientSecret = this.configService.get('google').clientSecret;
+
+    const oAuth2Client = new OAuth2Client(googleClientId, googleClientSecret);
+    const googleLoginTicket = await oAuth2Client.verifyIdToken({
       idToken: token,
-      audience: ggClientId,
+      audience: googleClientId,
     });
 
-    const { email_verified, email, name } = (await ggLoginTicket).getPayload();
+    // Verify google login ticket payload
+    const { email_verified, email, name } = googleLoginTicket.getPayload()
+
     if (!email_verified) {
       throw new HttpException(
-        'Email is not verified' + email,
+        'Email is not verified: ' + email,
         HttpStatus.FORBIDDEN,
       );
     }
 
-    let userRecord = await this.userRepository.findOneBy({
-      email,
-      loginType: LOGIN_TYPE.GOOGLE,
-    });
+    // Check user exists
+    let userRecord = await this.userRepository.findOneBy({ email: email });
 
+    // If user exists, return user
     if (userRecord && userRecord.loginType === LOGIN_TYPE.EMAIL) {
       throw new HttpException(
-        'Email use to login:' + email,
+        'User registed with email: ' + email + '. Please login !',
         HttpStatus.FORBIDDEN,
       );
     }
 
+    // If user doesn't exist, create new user
     if (!userRecord) {
       userRecord = await this.userRepository.save({
         email,
@@ -189,18 +193,19 @@ export class AuthService {
 
       await this.applicantRepository.save({
         userId: userRecord.id,
-      });
+      })
     }
 
-    const payload = await this.getPayload(userRecord);
-    const { accessToken, refreshToken: newRefreshToken } =
-      await this.signToken(payload);
+    const payload = await this.getPayload(userRecord)
+    const { accessToken, refreshToken } = await this.signToken(payload)
+  
     return {
       message: 'Login with google successfully',
       result: {
         accessToken,
-        refreshToken: newRefreshToken,
-      },
-    };
+        refreshToken
+      }
+    }
+    
   }
 }
