@@ -13,12 +13,16 @@ export default () => ({
   port: parseInt(process.env.PORT, 10) || 3000,
   jwtAuth: {
     jwtTokenSecret: process.env.JWT_SECRET,
-    expiresIn: '15m', 
+    jwtRefreshTokenSecret: process.env.JWT_REFRESH_TOKEN
   } ,
   supabase: {
     key: process.env.SUPABASE_KEY || '',
     url: process.env.SUPABASE_URL || '',
     bucket: process.env.SUPABASE_PRIVATE_BUCKET || '',
+  },
+  google: {
+    clientId: process.env.GG_CLIENT_ID || '',
+    clientSecret: process.env.GG_CLIENT_SECRET || '',
   },
 });
 
