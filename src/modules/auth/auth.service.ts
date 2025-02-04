@@ -11,6 +11,8 @@ import { RefreshTokenDto } from './dtos/refresh-token.dto';
 import { User } from 'src/databases/entities/user.entity';
 import { LoginGoogleDto } from './dtos/login-google.dto';
 import { OAuth2Client } from 'google-auth-library';
+import { RegisterCompanyDto } from './dtos/register-company.dto';
+import { CompanyRepository } from 'src/databases/repositories/company.repository';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +21,7 @@ export class AuthService {
     private readonly applicantRepository: ApplicantRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly companyRepository: CompanyRepository,
   ) {}
 
   async registerUser(registerUserDto: RegisterUserDto) {
@@ -163,7 +166,7 @@ export class AuthService {
     });
 
     // Verify google login ticket payload
-    const { email_verified, email, name } = googleLoginTicket.getPayload()
+    const { email_verified, email, name } = googleLoginTicket.getPayload();
 
     if (!email_verified) {
       throw new HttpException(
@@ -178,7 +181,7 @@ export class AuthService {
     // If user exists, return user
     if (userRecord && userRecord.loginType === LOGIN_TYPE.EMAIL) {
       throw new HttpException(
-        'User registed with email: ' + email + '. Please login !',
+        'This user registed with email: ' + email + '. Please login !',
         HttpStatus.FORBIDDEN,
       );
     }
@@ -193,19 +196,60 @@ export class AuthService {
 
       await this.applicantRepository.save({
         userId: userRecord.id,
-      })
+      });
     }
 
-    const payload = await this.getPayload(userRecord)
-    const { accessToken, refreshToken } = await this.signToken(payload)
-  
+    const payload = await this.getPayload(userRecord);
+    const { accessToken, refreshToken } = await this.signToken(payload);
+
     return {
       message: 'Login with google successfully',
       result: {
         accessToken,
-        refreshToken
-      }
+        refreshToken,
+      },
+    };
+  }
+
+  async registerCompany(registerCompanyDto: RegisterCompanyDto) {
+    const {
+      username,
+      email,
+      password,
+      companyName,
+      companyAddress,
+      companyWebsite,
+    } = registerCompanyDto;
+
+    // Check email exists
+    const userRecord = await this.userRepository.findOneBy({ email: email });
+    if (userRecord) {
+      throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
     }
-    
+
+    // Hash password of user
+    const hashPassword = await argon2.hash(password)
+
+    // Create new user
+    const newUser = await this.userRepository.save({
+      username,
+      email,
+      password: hashPassword,
+      loginType: LOGIN_TYPE.EMAIL,
+      role: ROLE.COMPANY,
+    })
+
+    // Create new company by user
+    await this.companyRepository.save({
+      userId: newUser.id,
+      companyName,
+      companyAddress,
+      companyWebsite,
+    })
+
+    return {
+      message: 'Company registered successfully'
+    }
+
   }
 }
