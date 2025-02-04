@@ -1,0 +1,9 @@
+## File: auth.service.ts
+Create new user (1) -> Use userRepository
+const newUser = await this.userRepository.save({
+    username,
+    email,
+    password: hashPassword,
+    loginType: LOGIN_TYPE.EMAIL,
+    role: ROLE.COMPANY,
+});
