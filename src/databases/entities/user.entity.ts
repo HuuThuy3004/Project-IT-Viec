@@ -11,7 +11,7 @@ import { Company } from './company.entity';
 import { CompanyFollow } from './company-follow.entity';
 import { CompanyReview } from './company-review.entity';
 import { ManuscriptSave } from './manuscript-save.entity';
-import { ManuscriptView } from './manuscript-view.entity';
+import { ManuscriptView } from './manuscript-view.entity'; 
 
 @Index('users_pkey', ['id'], { unique: true })
 @Entity('users', { schema: 'public' })

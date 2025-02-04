@@ -13,6 +13,8 @@ import { LoginGoogleDto } from './dtos/login-google.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { RegisterCompanyDto } from './dtos/register-company.dto';
 import { CompanyRepository } from 'src/databases/repositories/company.repository';
+import { DataSource } from 'typeorm';
+import { Company } from 'src/databases/entities/company.entity';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +23,8 @@ export class AuthService {
     private readonly applicantRepository: ApplicantRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly companyRepository: CompanyRepository,
+    // private readonly companyRepository: CompanyRepository,
+    private readonly dataSource: DataSource,
   ) {}
 
   async registerUser(registerUserDto: RegisterUserDto) {
@@ -58,7 +61,7 @@ export class AuthService {
     const { email, password } = loginUserDto;
 
     // Check if user email exists
-    const userRecord = await this.userRepository.findOneBy({ email });
+    const userRecord = await this.userRepository.findOneBy({ email: email });
     if (!userRecord) {
       throw new HttpException(
         'Incorrect email or password',
@@ -228,28 +231,45 @@ export class AuthService {
     }
 
     // Hash password of user
-    const hashPassword = await argon2.hash(password)
+    const hashPassword = await argon2.hash(password);
 
-    // Create new user
-    const newUser = await this.userRepository.save({
-      username,
-      email,
-      password: hashPassword,
-      loginType: LOGIN_TYPE.EMAIL,
-      role: ROLE.COMPANY,
-    })
+    // Create new company record to save to database
+    const queryRuner = this.dataSource.createQueryRunner();
+    await queryRuner.connect();
+    // Before object user and company is created to database then we will write a command: queryRuner.startTransaction()
+    await queryRuner.startTransaction()
 
-    // Create new company by user
-    await this.companyRepository.save({
-      userId: newUser.id,
-      companyName,
-      companyAddress,
-      companyWebsite,
-    })
+    try {
+      // Create new user -> Use queryRunner.manager
+      const newUser = await queryRuner.manager.save(User, {
+        username,
+        email,
+        password: hashPassword,
+        loginType: LOGIN_TYPE.EMAIL,
+        role: ROLE.COMPANY,
+      })
 
-    return {
-      message: 'Company registered successfully'
+      // Create new company by user
+      await queryRuner.manager.save(Company, {
+        userId: newUser.id,
+        name: companyName,
+        location: companyAddress,
+        website: companyWebsite,
+      });
+      await queryRuner.commitTransaction()
+
+      return {
+        message: 'Company registered successfully',
+      };
+    } catch (error) {
+      console.log(error);
+      // If any error occurs, we will rollback the transaction
+      await queryRuner.rollbackTransaction()
+    } finally {
+      // Release the query runner
+      await queryRuner.release()
     }
 
+    
   }
 }
