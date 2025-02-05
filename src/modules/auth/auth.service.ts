@@ -15,6 +15,7 @@ import { RegisterCompanyDto } from './dtos/register-company.dto';
 import { CompanyRepository } from 'src/databases/repositories/company.repository';
 import { DataSource } from 'typeorm';
 import { Company } from 'src/databases/entities/company.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     // private readonly companyRepository: CompanyRepository,
     private readonly dataSource: DataSource,
+    private readonly mailService: MailService,
   ) {}
 
   async registerUser(registerUserDto: RegisterUserDto) {
@@ -50,6 +52,17 @@ export class AuthService {
     await this.applicantRepository.save({
       userId: newUser.id,
     });
+
+    // Send mail here
+    await this.mailService.sendMail(
+      email,
+      'Welcom to IT viec',
+      'welcome-application',
+      {
+        name: username,
+        email: email,
+      },
+    );
 
     return {
       message: 'User registered successfully',
@@ -237,7 +250,7 @@ export class AuthService {
     const queryRuner = this.dataSource.createQueryRunner();
     await queryRuner.connect();
     // Before object user and company is created to database then we will write a command: queryRuner.startTransaction()
-    await queryRuner.startTransaction()
+    await queryRuner.startTransaction();
 
     try {
       // Create new user -> Use queryRunner.manager
@@ -247,7 +260,7 @@ export class AuthService {
         password: hashPassword,
         loginType: LOGIN_TYPE.EMAIL,
         role: ROLE.COMPANY,
-      })
+      });
 
       // Create new company by user
       await queryRuner.manager.save(Company, {
@@ -256,7 +269,7 @@ export class AuthService {
         location: companyAddress,
         website: companyWebsite,
       });
-      await queryRuner.commitTransaction()
+      await queryRuner.commitTransaction();
 
       return {
         message: 'Company registered successfully',
@@ -264,12 +277,10 @@ export class AuthService {
     } catch (error) {
       console.log(error);
       // If any error occurs, we will rollback the transaction
-      await queryRuner.rollbackTransaction()
+      await queryRuner.rollbackTransaction();
     } finally {
       // Release the query runner
-      await queryRuner.release()
+      await queryRuner.release();
     }
-
-    
   }
 }

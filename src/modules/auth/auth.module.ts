@@ -6,9 +6,11 @@ import { ApplicantRepository } from 'src/databases/repositories/applicant.reposi
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { CompanyRepository } from 'src/databases/repositories/company.repository';
+import { MailService } from '../mail/mail.service';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [],
+  imports: [MailModule],
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -17,6 +19,7 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
     JwtService,
     ConfigService,
     CompanyRepository,
+    MailService,
   ],
 })
 export class AuthModule {}
