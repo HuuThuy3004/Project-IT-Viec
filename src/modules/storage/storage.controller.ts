@@ -107,7 +107,7 @@ export class StorageController {
     // const result1 = await this.storageService.deleteFile('images/' + body.path);
     // const result2 = await this.storageService.deleteFile('cvs/' + body.path);
     const result = await this.storageService.deleteFile(body.path);
-
+    
     return {
         message: 'File deleted successfully',
         result,
