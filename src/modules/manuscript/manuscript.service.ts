@@ -63,11 +63,23 @@ export class ManuscriptService {
   }
 
   async delete(id: number, user: User) {
-    try {
-      return {
-        message: 'Delete manuscript successfully',
-        result: '....',
-      };
-    } catch (error) {}
+    // Validate HR have in company ??
+    const companyRecord = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+
+    const manuscriptRecord = await this.manuscriptRepository.findOneBy({
+      id,
+    });
+
+    if (companyRecord.id !== manuscriptRecord.companyId) {
+      throw new HttpException('User Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    await this.manuscriptRepository.softDelete(id);
+
+    return {
+      message: 'Delete manuscript successfully',
+    };
   }
 }

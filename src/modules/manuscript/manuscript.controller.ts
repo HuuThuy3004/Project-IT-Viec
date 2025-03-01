@@ -30,6 +30,7 @@ export class ManuscriptController {
     return this.manuscriptService.create(upsertManuscriptDto, user);
   }
 
+  
   @Roles(ROLE.COMPANY)
   @Put('/update/:id')
   async updateManuscript(
