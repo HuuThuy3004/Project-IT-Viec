@@ -64,13 +64,26 @@ export class ManuscriptService {
   }
 
   async delete(id: number, user: User) {
-    try {
-      return {
-        message: 'Delete manuscript successfully',
-        result: '....',
-      };
-    } catch (error) {}
+    // Validate HR have in company ??
+    const companyRecord = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+
+    const manuscriptRecord = await this.manuscriptRepository.findOneBy({
+      id,
+    });
+
+    if (companyRecord.id !== manuscriptRecord.companyId) {
+      throw new HttpException('User Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    await this.manuscriptRepository.softDelete(id);
+
+    return {
+      message: 'Delete manuscript successfully',
+    };
   }
+
 
   async getAll(queries: ManuscriptQuriesDto) {
     console.log('queries', queries);
@@ -87,7 +100,7 @@ export class ManuscriptService {
       maxSalary,
     } = queries;
 
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit
 
     const queryBuilder = this.manuscriptRepository
       .createQueryBuilder('manuscript')
@@ -110,28 +123,28 @@ export class ManuscriptService {
         'c.companyType AS "companyType"',
         'c.industry AS "companyIndustry"',
       ])
-      .groupBy('manuscript.id, c.id');
+      .groupBy('manuscript.id, c.id')
   
-    if (companyAddress) queryBuilder.andWhere('c.location = :address', { address: companyAddress });
+    if (companyAddress) queryBuilder.andWhere('c.location = :address', { address: companyAddress })
   
-    if (companyTypes) queryBuilder.andWhere('c.companyType IN (:...companyTypes)', { companyTypes });
+    if (companyTypes) queryBuilder.andWhere('c.companyType IN (:...companyTypes)', { companyTypes })
   
-    if (levels) queryBuilder.andWhere('manuscript.level IN (:...levels)', { levels });
+    if (levels) queryBuilder.andWhere('manuscript.level IN (:...levels)', { levels })
   
-    if (workingModel) queryBuilder.andWhere('manuscript.workingModel IN (:...workingModel)', { workingModel });
+    if (workingModel) queryBuilder.andWhere('manuscript.workingModel IN (:...workingModel)', { workingModel })
   
-    if (industryIds) queryBuilder.andWhere('c.industry IN (:...industryIds)', { industryIds });
+    if (industryIds) queryBuilder.andWhere('c.industry IN (:...industryIds)', { industryIds })
   
-    if (minSalary) queryBuilder.andWhere('manuscript.minSalary >= :minSalary', { minSalary });
+    if (minSalary) queryBuilder.andWhere('manuscript.minSalary >= :minSalary', { minSalary })
   
-    if (maxSalary) queryBuilder.andWhere('manuscript.maxSalary <= :maxSalary', { maxSalary });
+    if (maxSalary) queryBuilder.andWhere('manuscript.maxSalary <= :maxSalary', { maxSalary })
   
     queryBuilder.limit(limit).offset(skip)
 
     const [data, total] = await Promise.all([
       queryBuilder.getRawMany(),
       queryBuilder.getCount(),
-    ]);
+    ])
 
     return {
       message: 'Get all manuscripts successfully',
@@ -141,6 +154,9 @@ export class ManuscriptService {
         limit,
         data,
       },
-    };
+    }
   }
 }
+
+}
+
