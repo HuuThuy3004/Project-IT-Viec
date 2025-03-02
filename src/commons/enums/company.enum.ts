@@ -1,7 +1,7 @@
 export enum COMPANY_ADDRESS {
   HA_NOI = 'Ha Noi',
   DA_NANG = 'Da Nang',
-  HO_CHI_MINH = 'Ho CHi Minh',
+  HO_CHI_MINH = 'Ho Chi Minh',
   OTHERS = 'OTHERS',
 }
 
