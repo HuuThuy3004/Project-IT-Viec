@@ -7,6 +7,7 @@ import { DataSource } from 'typeorm';
 import { Manuscript } from 'src/databases/entities/manuscript.entity';
 import { ManuscriptSkill } from 'src/databases/entities/manuscript-skill.entity';
 import { ManuscriptQuriesDto } from './dtos/manuscript-quries.dto';
+import { convertKeySortManuscript } from 'src/commons/utils/helper';
 
 @Injectable()
 export class ManuscriptService {
@@ -98,6 +99,7 @@ export class ManuscriptService {
       industryIds,
       minSalary,
       maxSalary,
+      sort,
     } = queries;
 
     const skip = (page - 1) * limit
@@ -122,6 +124,8 @@ export class ManuscriptService {
         'c.companySize AS "companySize"',
         'c.companyType AS "companyType"',
         'c.industry AS "companyIndustry"',
+        'c.logo AS "companyLogo"',
+        "JSON_AGG(json_build_object('id', s.id, 'name', s.name)) AS manuscriptSkills"
       ])
       .groupBy('manuscript.id, c.id')
   
@@ -141,6 +145,39 @@ export class ManuscriptService {
   
     queryBuilder.limit(limit).offset(skip)
 
+    if (companyAddress) queryBuilder.andWhere('c.location = :address', { address: companyAddress });
+
+    if (companyTypes) queryBuilder.andWhere('c.companyType IN (:...companyTypes)', { companyTypes });
+
+    if (levels) queryBuilder.andWhere('manuscript.level IN (:...levels)', { levels });
+
+    if (workingModel) queryBuilder.andWhere('manuscript.workingModel IN (:...workingModel)', { workingModel });
+
+    if (industryIds) queryBuilder.andWhere('c.industry IN (:...industryIds)', { industryIds });
+
+    if (minSalary) queryBuilder.andWhere('manuscript.minSalary >= :minSalary', { minSalary });
+
+    if (maxSalary) queryBuilder.andWhere('manuscript.maxSalary <= :maxSalary', { maxSalary });
+
+    if (keyword) {
+      queryBuilder.andWhere('s.name ILIKE :keyword', { keyword: `%${keyword}%` })
+      .orWhere('manuscript.title ILIKE :keyword', { keyword: `%${keyword}%`} )
+      .orWhere('manuscript.summary ILIKE :keyword', { keyword: `%${keyword}%`} )
+      .orWhere('c.name ILIKE :keyword', { keyword: `%${keyword}%`} )
+    }
+
+    if (sort) {
+      const order = convertKeySortManuscript(sort)
+      console.log('order', order);
+      for (const key of Object.keys(order)) {
+        queryBuilder.addOrderBy(key, order[key])
+      }
+    } else {
+      queryBuilder.addOrderBy('manuscript.createdAt', 'DESC')
+    }
+
+
+    queryBuilder.limit(limit).offset(skip)
     const [data, total] = await Promise.all([
       queryBuilder.getRawMany(),
       queryBuilder.getCount(),
@@ -156,7 +193,8 @@ export class ManuscriptService {
       },
     }
   }
-}
 
 }
+
+
 
