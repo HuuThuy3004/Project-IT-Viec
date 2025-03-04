@@ -23,7 +23,7 @@ import { ManuscriptQuriesDto } from './dtos/manuscript-quries.dto';
 @Controller('manuscript')
 export class ManuscriptController {
   constructor(private readonly manuscriptService: ManuscriptService) {}
-
+  // Mai xem youtube tiep, 1:50:42
   @Roles(ROLE.COMPANY)
   @Post('')
   async createManuscript(
@@ -33,7 +33,6 @@ export class ManuscriptController {
     return this.manuscriptService.create(upsertManuscriptDto, user);
   }
 
-  
   @Roles(ROLE.COMPANY)
   @Put('/update/:id')
   async updateManuscript(
@@ -57,5 +56,10 @@ export class ManuscriptController {
   @Get()
   async getAllManuscripts(@Query() queries: ManuscriptQuriesDto) {
     return await this.manuscriptService.getAll(queries);
+  }
+  @Public()
+  @Get('/:id')
+  async getDetailManuscripts(@Param('id', ParseIntPipe) id: number) {
+    return await this.manuscriptService.getDetail(id);
   }
 }
