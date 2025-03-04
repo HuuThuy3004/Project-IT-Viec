@@ -8,13 +8,17 @@ import { Manuscript } from 'src/databases/entities/manuscript.entity';
 import { ManuscriptSkill } from 'src/databases/entities/manuscript-skill.entity';
 import { ManuscriptQuriesDto } from './dtos/manuscript-quries.dto';
 import { convertKeySortManuscript } from 'src/commons/utils/helper';
+import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class ManuscriptService {
   constructor(
     private readonly manuscriptRepository: ManuscriptRepository,
+    private readonly manuscriptSkillRepository: ManuscriptSkillRepository,
     private readonly companyRepository: CompanyRepository,
     private readonly dataSource: DataSource,
+    private readonly redisService: RedisService,
   ) {}
 
   async create(body: UpsertManuscriptDto, user: User) {
@@ -56,12 +60,47 @@ export class ManuscriptService {
   }
 
   async update(id: number, body: UpsertManuscriptDto, user: User) {
-    try {
-      return {
-        message: 'Update manuscript successfully',
-        result: '....',
-      };
-    } catch (error) {}
+    const companyRecord = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+
+    const manuscriptRecord = await this.manuscriptRepository.findOne({
+      where: {id}
+    });
+
+    if (!manuscriptRecord) {
+      throw new HttpException('Not found', HttpStatus.NOT_FOUND)
+    }
+
+    if (companyRecord.id !== manuscriptRecord.companyId) {
+      throw new HttpException('User FORBIDDEN', HttpStatus.FORBIDDEN)
+    }
+
+    const { skillIds } = body;
+    delete body.skillIds;
+    
+    // Update Manuscript
+    const updateManuscript = await this.manuscriptRepository.save({
+      ...manuscriptRecord,
+      ...body,
+    })
+
+    // Update Manuscript Skills
+    await this.manuscriptSkillRepository.delete({ manuscriptId: id})
+    const manuscriptSkills = skillIds.map((skillId) => ({
+      manuscriptId: manuscriptRecord.id,
+      skillId,
+    }));
+
+    await this.manuscriptSkillRepository.save(manuscriptSkills)
+    
+    const manuKey = 'manu' + id
+    await this.redisService.setKey(manuKey, '')
+
+    return {
+      message: 'Update manuscript successfully',
+      result: updateManuscript,
+    };
   }
 
   async delete(id: number, user: User) {
@@ -80,6 +119,9 @@ export class ManuscriptService {
 
     await this.manuscriptRepository.softDelete(id);
 
+    const manuKey = 'manu' + id
+    await this.redisService.setKey(manuKey, '')
+    
     return {
       message: 'Delete manuscript successfully',
     };
@@ -191,6 +233,31 @@ export class ManuscriptService {
         limit,
         data,
       },
+    }
+  }
+
+  async getDetail(id: number) {
+    const manuKey = 'manu' + id
+
+    const manuscript = await this.redisService.getKey(manuKey)
+    let manuscriptRec: Manuscript
+
+    if (!manuscript) {
+      manuscriptRec = await this.manuscriptRepository.findOne({
+        where: {id},
+      });
+  
+      if (!manuscriptRec) {
+        throw new HttpException('Not found', HttpStatus.NOT_FOUND)
+      }
+      await this.redisService.setKey(manuKey, JSON.stringify(manuscriptRec))
+    } else {
+      manuscriptRec = JSON.parse(manuscript)
+    }
+
+    return {
+      message: 'Get manuscript detail successfully',
+      result: manuscriptRec,
     }
   }
 
