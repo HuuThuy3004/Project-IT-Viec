@@ -127,7 +127,6 @@ export class ManuscriptService {
     };
   }
 
-
   async getAll(queries: ManuscriptQuriesDto) {
     console.log('queries', queries);
     const {
