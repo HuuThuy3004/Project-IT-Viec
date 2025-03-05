@@ -17,6 +17,7 @@ import { IndustryModule } from './modules/industry/industry.module';
 import { CompanyModule } from './modules/company/company.module';
 import { ManuscriptModule } from './modules/manuscript/manuscript.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -39,13 +40,22 @@ import { RedisModule } from './modules/redis/redis.module';
     CompanyModule,
     ManuscriptModule,
     RedisModule,
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          url: configService.get('redisUri'),
+        }
+      }),
+    }),
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_GUARD,
-      useClass: AuthGuard
+      useClass: AuthGuard,
     },
   ],
 })
